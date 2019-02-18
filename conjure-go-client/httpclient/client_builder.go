@@ -62,6 +62,8 @@ type httpClientBuilder struct {
 	EnableIPV6  bool
 
 	BytesBufferPool bytesbuffers.Pool
+
+	BaseRoundTripper http.RoundTripper
 }
 
 // NewClient returns a configured client ready for use.
@@ -160,6 +162,10 @@ func httpClientAndRoundTripHandlersFromBuilder(b *httpClientBuilder) (*http.Clie
 			return nil, nil, werror.Wrap(err, "failed to configure transport for http2")
 		}
 	}
+	var rt http.RoundTripper = transport
+	if b.BaseRoundTripper != nil {
+		rt = b.BaseRoundTripper
+	}
 	if !b.DisableTracing {
 		_ = WithMiddleware(&traceMiddleware{ServiceName: b.ServiceName}).applyHTTPClient(b)
 	}
@@ -169,6 +175,6 @@ func httpClientAndRoundTripHandlersFromBuilder(b *httpClientBuilder) (*http.Clie
 
 	return &http.Client{
 		Timeout:   b.Timeout,
-		Transport: transport,
+		Transport: rt,
 	}, b.Middlewares, nil
 }

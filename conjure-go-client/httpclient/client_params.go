@@ -338,3 +338,11 @@ func WithErrorDecoder(errorDecoder ErrorDecoder) ClientParam {
 		return nil
 	})
 }
+
+func WithBaseRoundTripper(rt http.RoundTripper) ClientParam {
+	return clientParamFunc(func(b *clientBuilder) error {
+		b.BaseRoundTripper = rt
+		b.uris = []string{"http://handler:9999"}
+		return nil
+	})
+}

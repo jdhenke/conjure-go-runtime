@@ -15,9 +15,11 @@
 package httpclient
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"testing"
@@ -117,4 +119,31 @@ func unwrapTransport(rt http.RoundTripper) *http.Transport {
 			panic(fmt.Sprintf("unknown roundtripper type %T", unwrapped))
 		}
 	}
+}
+
+type mockRT struct {
+	http.Handler
+}
+
+func (m mockRT) RoundTrip(r *http.Request) (*http.Response, error) {
+	rw := httptest.NewRecorder()
+	m.ServeHTTP(rw, r)
+	return rw.Result(), nil
+}
+
+func TestWithBaseRoundTripper(t *testing.T) {
+	method := http.MethodPost
+	path := "/foo/bar"
+	handled := false
+	client, err := NewClient(WithBaseRoundTripper(&mockRT{
+		Handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, path, r.URL.Path)
+			assert.Equal(t, method, r.Method)
+			handled = true
+		}),
+	}))
+	assert.NoError(t, err)
+	_, err = client.Do(context.Background(), WithPath(path), WithRequestMethod(method))
+	assert.NoError(t, err)
+	assert.True(t, handled)
 }
