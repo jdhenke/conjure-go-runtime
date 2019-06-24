@@ -202,11 +202,15 @@ func (c *clientImpl) doOnce(ctx context.Context, baseURI string, params ...Reque
 	clientCopy.Transport = transport
 
 	// 3. execute the request using the client to get and handle the response
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	req = req.WithContext(ctx)
 	resp, respErr := clientCopy.Do(req)
 
 	// unless this is exactly the scenario where the caller has opted into being responsible for draining and closing
 	// the response body, be sure to do so here.
-	if !(respErr == nil && b.bodyMiddleware.rawOutput) {
+	if !b.bodyMiddleware.rawOutput {
+		cancel()
 		internal.DrainBody(resp)
 	}
 
